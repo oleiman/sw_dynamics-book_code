@@ -238,21 +238,26 @@ Determining cache sizes. Adjusted the linesize to 128B to match M2 mac expectati
 Results:
 
 ```
-lgcount[4] load N cache lines, giving cy/ld. Repeat.  27 0 0 0 
-lgcount[5] load N cache lines, giving cy/ld. Repeat.  0 0 4 0 
-lgcount[6] load N cache lines, giving cy/ld. Repeat.  9 0 0 2 
-lgcount[7] load N cache lines, giving cy/ld. Repeat.  56 2 1 2 
-lgcount[8] load N cache lines, giving cy/ld. Repeat.  76 2 2 2 
-lgcount[9] load N cache lines, giving cy/ld. Repeat.  60 2 2 2 
-lgcount[10] load N cache lines, giving cy/ld. Repeat.  123 6 7 6 
-lgcount[11] load N cache lines, giving cy/ld. Repeat.  62 16 16 16 
-lgcount[12] load N cache lines, giving cy/ld. Repeat.  48 17 16 16 
-lgcount[13] load N cache lines, giving cy/ld. Repeat.  54 21 18 18 
-lgcount[14] load N cache lines, giving cy/ld. Repeat.  50 21 19 18 
-lgcount[15] load N cache lines, giving cy/ld. Repeat.  50 26 23 26 
-lgcount[16] load N cache lines, giving cy/ld. Repeat.  87 57 39 23 
-lgcount[17] load N cache lines, giving cy/ld. Repeat.  46 30 28 26 
-lgcount[18] load N cache lines, giving cy/ld. Repeat.  88 48 38 33
+lgcount[4] load N cache lines, giving cy/ld. Repeat.  9 0 0 9
+lgcount[5] load N cache lines, giving cy/ld. Repeat.  0 4 4 0
+lgcount[6] load N cache lines, giving cy/ld. Repeat.  2 2 2 2
+lgcount[7] load N cache lines, giving cy/ld. Repeat.  46 2 2 2
+lgcount[8] load N cache lines, giving cy/ld. Repeat.  63 2 3 2
+lgcount[9] load N cache lines, giving cy/ld. Repeat.  56 3 3 3
+lgcount[10] load N cache lines, giving cy/ld. Repeat.  51 8 8 7
+lgcount[11] load N cache lines, giving cy/ld. Repeat.  50 21 21 21
+lgcount[12] load N cache lines, giving cy/ld. Repeat.  50 23 22 21
+lgcount[13] load N cache lines, giving cy/ld. Repeat.  50 24 22 21
+lgcount[14] load N cache lines, giving cy/ld. Repeat.  59 26 26 22
+lgcount[15] load N cache lines, giving cy/ld. Repeat.  45 25 23 22
+lgcount[16] load N cache lines, giving cy/ld. Repeat.  54 41 32 26
+lgcount[17] load N cache lines, giving cy/ld. Repeat.  45 31 27 24
+lgcount[18] load N cache lines, giving cy/ld. Repeat.  57 40 40 31
 ```
 
-2^9 is the last N with uniformly fast re-reads. That would give an L1 cache size of 2^9 * 128 = 512 * 128 = 65KB, which is the cache size of the efficiency cores on the M2. Note that 2^10 produces still fairly fast but slightly slower re-reads. The M2's performance cores have double the L1 cache of the efficiency cores, so we could be hitting these the whole time. 
+2^9 is the last N with uniformly fast re-reads. That would give an L1 cache size of 2^9 * 128 = 512 * 128 = 65KB, which is the cache size of the efficiency cores on the M2. Note that 2^10 produces still fairly fast but slightly slower re-reads. The M2's performance cores have double the L1 cache of the efficiency cores, so we could be hitting these the whole time. The big jump to ~20 cycle re-reads is most obviously the transition to L2.
+
+Perf cores: 16MiB L2 / 128 = 131072 = 2^17
+Efficiency cores: 4MiB L2 / 128 = 32768 = 2^15
+
+Same kind of deal, where we see one profile up to the efficiency core L2 size, then another beyond that. Seems almost as though there's some sharing, but that doesn't make much sense. Maybe that the additional perf core cache is a bit slower? Like both have v fast 4MiB, then the additional 12 are a bit slower?

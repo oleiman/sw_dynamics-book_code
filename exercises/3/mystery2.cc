@@ -86,7 +86,7 @@ static const int kPageSize = 4096;		// Must be a power of two
 static const int kPageSizeMask = kPageSize - 1;
 
 // Make an array bigger than any expected cache size
-static const int kMaxArraySize = 40 * 1024 * 1024;
+static const int kMaxArraySize = 40 * 1024 * 1024 * 4;
 
 // Minimum useful cache line size is twice sizeof(void*), 16 bytes
 // Maximum useful cache line size is page size, assumed here to be 4KB
@@ -281,7 +281,7 @@ void  FindCacheSizes(uint8* ptr, int kMaxArraySize, int linesize) {
 
   // Load 16 to 512K cache lines and time it. 32MB cache / 64B linesize = 512K lines.
     // NOTE(oren): M2 mac (linesize = 128) Load 16 to 256K cache lines and time it. 32MB cache / 128B linesize = 256K lines.
-  for (int lgcount = 4; lgcount <= 18; ++lgcount) {
+  for (int lgcount = 4; lgcount <= 20; ++lgcount) {
     int count = 1 << lgcount;
  
     // Try to force the data we will access out of the caches
