@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if test "$#" -ne 2; then
+if test "$#" -lt 2; then
     echo "usage: build.sh FILENAME O_LVL"
     exit
 fi
@@ -15,9 +15,11 @@ mkdir -p build
 
 pushd build
 
-g++ "../${1}" -O"${opt}" -o "${filename}_${opt}"
-g++ "../${1}" -O"${opt}" -o "${filename}_${opt}.asm" -S
+g++ -fno-tree-reassoc -I../../src "../${1}" -O"${opt}" -o "${filename}_${opt}"
+g++ -fno-tree-reassoc -fverbose-asm -I../../src "../${1}" -O"${opt}" -o "${filename}_${opt}.asm" -S
 
+
+#-fno-tree-reassoc
 popd
 
 

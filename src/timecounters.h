@@ -33,14 +33,25 @@ inline int64_t GetCycles() {
 #elif IsRPi4_64
   // Increments once per 27.778 cycles for RPi4-B at 54 MHz counter and 1.5GHz CPU clock
   // Call it 28 cycles
+  // Increments once per 145 cycles for Apple M2 (24 MHz counter and 3480 MHz CPU clock
   uint64_t counter_value;
   asm volatile("mrs %x0, cntvct_el0" : "=r"(counter_value));
-  return counter_value * 28;
+  return counter_value * 145;
 
 #else
 #error Need cycle counter defines for your architecture
 #endif
  
+}
+
+inline int64_t GetFreq() {
+  #if IsRPi4_64
+  uint64_t freq_value;
+  asm volatile("mrs %x0, cntfrq_el0" : "=r"(freq_value));
+  return freq_value;
+  #else
+  #error Wrong architecture
+  #endif
 }
 
 // Return current time of day as microseconds since January 1, 1970
