@@ -1,7 +1,7 @@
 % Understanding Software Dynamics
 % Exercises and Notes
 
-# Chapter 2
+# Chapter 2 - Measuring CPUs
 
 ## Ex. 1
 
@@ -160,3 +160,99 @@ debian@debian:~/co/sw_dynamics-book_code/exercises$ ./build/mystery1_operations_
 ```
 
 These instructions latencies all line up with those listed in the ARM Cortex-A75 optimization guide, which happens to appear at the top of google. The M2 chip is a bit beefier than this one, but the Cortex A75 is a fairly modern ARM chip that implements ARM-v8, so using the values therein as a post facto sanity check seems reasonable enough.
+
+# Chapter 3 - Measuring Memory
+
+## Ex. 1
+
+Cache line (stride) results:
+
+```
+stride[16] naive 19 cy/ld, linear 47 cy/ld, scrambled 21 cy/ld
+stride[32] naive 5 cy/ld, linear 7 cy/ld, scrambled 29 cy/ld
+stride[64] naive 6 cy/ld, linear 14 cy/ld, scrambled 61 cy/ld
+stride[128] naive 9 cy/ld, linear 31 cy/ld, scrambled 156 cy/ld
+stride[256] naive 17 cy/ld, linear 79 cy/ld, scrambled 149 cy/ld
+stride[512] naive 7 cy/ld, linear 77 cy/ld, scrambled 94 cy/ld
+stride[1024] naive 7 cy/ld, linear 53 cy/ld, scrambled 151 cy/ld
+stride[2048] naive 15 cy/ld, linear 82 cy/ld, scrambled 138 cy/ld
+stride[4096] naive 14 cy/ld, linear 94 cy/ld, scrambled 187 cy/ld
+```
+
+Not getting super clean measurements on the M2, but I'd probably guess 64B or 128B. For this specific run, we see that strides of 128B and 256B produce roughly the same cy/ld value, which suggests that they correspond to the true L1 miss penalty, which in turn suggests a 128B cache line. Other runs exhibit a similar effect between 64B and 128B stride length, but the general pattern favors a 128B cache line.
+
+NOTE: The true cache line size on this CPU is 128B.
+
+## Ex. 2
+
+Test of the exercise is to look at the 256B potential cache line size, but I think 512B would be more in the spirit here because the sample servers in the book have a 64B cache line whereas my M2 mac has 128B lines.
+
+```
+stride[512] naive 7 cy/ld, linear 67 cy/ld, scrambled 145 cy/ld
+stride[512] naive 7 cy/ld, linear 82 cy/ld, scrambled 118 cy/ld
+stride[512] naive 6 cy/ld, linear 70 cy/ld, scrambled 118 cy/ld
+```
+
+- As expected, naive scheme is way too fast. Though we know our stride has exceeded the cache line size by quite a lot, prefetching, parallel memory reads, and possibly other CPU optimizations defeat our measurement scheme.
+- Linear scheme is slightly better, a bit less than half of what we expect to be the true miss penalty. Since our stride is 4x the cache line size, N+1 prefetching can't get us all the way there.
+  - Possible that the CPU performs $>N+1$ prefetching? Or perhaps a more clever scheme? The Data-dependent prefetcher coming into play?
+
+## Ex. 3
+
+Setting `extrabit` to zero produces the following result:
+
+```
+stride[16] naive 5 cy/ld, linear 14 cy/ld, scrambled 34 cy/ld
+stride[32] naive 10 cy/ld, linear 10 cy/ld, scrambled 51 cy/ld
+stride[64] naive 11 cy/ld, linear 12 cy/ld, scrambled 66 cy/ld
+stride[128] naive 7 cy/ld, linear 24 cy/ld, scrambled 65 cy/ld
+stride[256] naive 7 cy/ld, linear 45 cy/ld, scrambled 75 cy/ld
+stride[512] naive 9 cy/ld, linear 69 cy/ld, scrambled 86 cy/ld
+stride[1024] naive 9 cy/ld, linear 50 cy/ld, scrambled 138 cy/ld
+stride[2048] naive 14 cy/ld, linear 93 cy/ld, scrambled 202 cy/ld
+stride[4096] naive 16 cy/ld, linear 109 cy/ld, scrambled 105 cy/ld
+```
+
+Here it looks like we don't reach the true miss penalty until 1024B stride (8x the cache line size. We know that clearing the extrabit defeats the different-row address pattern. So our results suggest that, with a 1024B stride, successive accesses are in different DRAM rows.
+
+I suspect that QEMU is significantly distorting my measurements here. Running on "bare" metal, defeating diff-row accesses produces this with reasonable consistency:
+
+```
+stride[16] naive 11 cy/ld, linear 13 cy/ld, scrambled 23 cy/ld
+stride[32] naive 5 cy/ld, linear 10 cy/ld, scrambled 45 cy/ld
+stride[64] naive 5 cy/ld, linear 11 cy/ld, scrambled 66 cy/ld
+stride[128] naive 5 cy/ld, linear 22 cy/ld, scrambled 78 cy/ld
+stride[256] naive 6 cy/ld, linear 35 cy/ld, scrambled 93 cy/ld
+stride[512] naive 7 cy/ld, linear 67 cy/ld, scrambled 90 cy/ld
+stride[1024] naive 3 cy/ld, linear 21 cy/ld, scrambled 97 cy/ld
+stride[2048] naive 4 cy/ld, linear 24 cy/ld, scrambled 96 cy/ld
+stride[4096] naive 7 cy/ld, linear 24 cy/ld, scrambled 97 cy/ld
+```
+
+Though I note that the results _with_ the extrabit look pretty similar between QEMU and bare Mac OS.
+
+## Ex. 4
+
+Determining cache sizes. Adjusted the linesize to 128B to match M2 mac expectation, also adjusted max N to 2^18 as 2^19 would overflow the allocated 32MB array.
+
+Results:
+
+```
+lgcount[4] load N cache lines, giving cy/ld. Repeat.  27 0 0 0 
+lgcount[5] load N cache lines, giving cy/ld. Repeat.  0 0 4 0 
+lgcount[6] load N cache lines, giving cy/ld. Repeat.  9 0 0 2 
+lgcount[7] load N cache lines, giving cy/ld. Repeat.  56 2 1 2 
+lgcount[8] load N cache lines, giving cy/ld. Repeat.  76 2 2 2 
+lgcount[9] load N cache lines, giving cy/ld. Repeat.  60 2 2 2 
+lgcount[10] load N cache lines, giving cy/ld. Repeat.  123 6 7 6 
+lgcount[11] load N cache lines, giving cy/ld. Repeat.  62 16 16 16 
+lgcount[12] load N cache lines, giving cy/ld. Repeat.  48 17 16 16 
+lgcount[13] load N cache lines, giving cy/ld. Repeat.  54 21 18 18 
+lgcount[14] load N cache lines, giving cy/ld. Repeat.  50 21 19 18 
+lgcount[15] load N cache lines, giving cy/ld. Repeat.  50 26 23 26 
+lgcount[16] load N cache lines, giving cy/ld. Repeat.  87 57 39 23 
+lgcount[17] load N cache lines, giving cy/ld. Repeat.  46 30 28 26 
+lgcount[18] load N cache lines, giving cy/ld. Repeat.  88 48 38 33
+```
+
+2^9 is the last N with uniformly fast re-reads. That would give an L1 cache size of 2^9 * 128 = 512 * 128 = 65KB, which is the cache size of the efficiency cores on the M2. Note that 2^10 produces still fairly fast but slightly slower re-reads. The M2's performance cores have double the L1 cache of the efficiency cores, so we could be hitting these the whole time. 
